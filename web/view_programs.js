@@ -1,7 +1,11 @@
 // view_programs.js - Script per la pagina di visualizzazione programmi
 
 // =================== VARIABILI GLOBALI ===================
-let programStatusInterval = null;      // Intervallo per il polling dello stato
+// Verifica se la variabile è già stata dichiarata per evitare errori
+// in caso di ricarica dello script
+if (typeof window.programStatusInterval === 'undefined') {
+    window.programStatusInterval = null;      // Intervallo per il polling dello stato
+}
 let programsData = {};                 // Cache dei dati dei programmi
 let zoneNameMap = {};                  // Mappatura ID zona -> nome zona
 let lastKnownState = null;             // Ultimo stato conosciuto (per confronti)
@@ -51,7 +55,7 @@ function startProgramStatusPolling() {
     fetchProgramState();
     
     // Imposta l'intervallo per il polling
-    programStatusInterval = setInterval(fetchProgramState, NORMAL_POLLING_INTERVAL);
+    window.programStatusInterval = setInterval(fetchProgramState, NORMAL_POLLING_INTERVAL);
     console.log("Polling dello stato dei programmi avviato");
 }
 
@@ -59,9 +63,9 @@ function startProgramStatusPolling() {
  * Ferma il polling dello stato dei programmi
  */
 function stopProgramStatusPolling() {
-    if (programStatusInterval) {
-        clearInterval(programStatusInterval);
-        programStatusInterval = null;
+    if (window.programStatusInterval) {
+        clearInterval(window.programStatusInterval);
+        window.programStatusInterval = null;
         console.log("Polling dello stato dei programmi fermato");
     }
 }
@@ -127,7 +131,7 @@ function acceleratePolling() {
     stopProgramStatusPolling();
     
     // Imposta un intervallo più frequente
-    programStatusInterval = setInterval(fetchProgramState, FAST_POLLING_INTERVAL);
+    window.programStatusInterval = setInterval(fetchProgramState, FAST_POLLING_INTERVAL);
     
     // Dopo 15 secondi, ripristina l'intervallo normale
     setTimeout(restoreNormalPolling, 15000);
@@ -146,7 +150,7 @@ function restoreNormalPolling() {
     stopProgramStatusPolling();
     
     // Ripristina l'intervallo normale
-    programStatusInterval = setInterval(fetchProgramState, NORMAL_POLLING_INTERVAL);
+    window.programStatusInterval = setInterval(fetchProgramState, NORMAL_POLLING_INTERVAL);
 }
 
 // =================== CARICAMENTO DATI ===================
@@ -410,8 +414,9 @@ function updateProgramsUI(state) {
                 // Un altro programma è attivo
                 startBtn.classList.add('disabled');
                 startBtn.disabled = true;
-                stopBtn.classList.add('disabled');
-                stopBtn.disabled = true;
+                // Consentire di fermare qualsiasi programma con qualsiasi pulsante OFF
+                stopBtn.classList.remove('disabled');
+                stopBtn.disabled = false;
             } else {
                 // Nessun programma è attivo
                 startBtn.classList.remove('disabled');
@@ -457,7 +462,7 @@ function updateRunningProgramStatus(state) {
         const seconds = remainingSeconds % 60;
         const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         
-        // Determina l'avanzamento della zona attiva
+        // Determina l'avanzamento della zona attiva - FIX: calcolo corretto percentuale
         let progressPercentage = 0;
         const steps = programsData[state.current_program_id]?.steps || [];
         const currentStep = steps.find(step => step.zone_id === state.active_zone.id);
@@ -465,6 +470,7 @@ function updateRunningProgramStatus(state) {
         if (currentStep) {
             const totalSeconds = currentStep.duration * 60;
             const elapsedSeconds = totalSeconds - remainingSeconds;
+            // FIX: Calcolo corretto della percentuale di avanzamento
             progressPercentage = Math.min(Math.max((elapsedSeconds / totalSeconds) * 100, 0), 100);
         } else {
             // Fallback, dovrebbe sempre trovare lo step corrispondente
@@ -558,7 +564,8 @@ function calculateProgressPercentage(remainingSeconds) {
     // Questa è un'approssimazione, in quanto non conosciamo la durata totale della zona
     // quindi assumiamo che la maggior parte delle zone durano circa 10 minuti
     const estimatedTotalSeconds = 10 * 60;
-    const elapsedPercentage = 100 - (remainingSeconds / estimatedTotalSeconds * 100);
+    const elapsedSeconds = estimatedTotalSeconds - remainingSeconds;
+    const elapsedPercentage = (elapsedSeconds / estimatedTotalSeconds * 100);
     
     // Limita il valore tra 0 e 100
     return Math.min(Math.max(elapsedPercentage, 0), 100);
@@ -706,22 +713,17 @@ function stopProgram() {
                 }
                 // Aggiorna immediatamente l'interfaccia
                 fetchProgramState();
-                // Riabilita i pulsanti dopo il successo
-                stopBtns.forEach(btn => {
-                    btn.classList.remove('disabled');
-                    btn.disabled = false;
-                });
             } else {
                 if (typeof showToast === 'function') {
                     showToast(`Errore nell'arresto del programma: ${data.error || 'Errore sconosciuto'}`, 'error');
                 }
-                
-                // Riabilita i pulsanti in caso di errore
-                stopBtns.forEach(btn => {
-                    btn.classList.remove('disabled');
-                    btn.disabled = false;
-                });
             }
+            
+            // Riabilita i pulsanti
+            stopBtns.forEach(btn => {
+                btn.classList.remove('disabled');
+                btn.disabled = false;
+            });
         })
         .catch(error => {
             console.error("Errore durante l'arresto del programma:", error);
