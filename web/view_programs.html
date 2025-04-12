@@ -26,7 +26,8 @@
             max-height: 650px;
         }
 		
-/* Miglioramenti per l'animazione della card di programma attivo */
+/* Aggiunta al CSS in web/view_programs.html - Miglioramento stile active-program */
+
 .active-program {
     border: 2px solid #00cc66;
     animation: pulse 2s infinite;
@@ -37,13 +38,14 @@
         box-shadow: 0 0 0 0 rgba(0, 204, 102, 0.4);
     }
     70% {
-        box-shadow: 0 0 0 10px rgba(0, 204, 102, 0);
+        box-shadow: 0 0 0 8px rgba(0, 204, 102, 0);
     }
     100% {
         box-shadow: 0 0 0 0 rgba(0, 204, 102, 0);
     }
 }
 
+/* Miglioramento dell'indicatore di programma attivo */
 .active-indicator {
     background-color: #00cc66;
     color: white;

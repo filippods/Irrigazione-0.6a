@@ -4,10 +4,11 @@
 var maxActiveZones = 3;
 var maxZoneDuration = 180; // durata massima in minuti
 var progressIntervals = {};
-var userSettings = {};
-var zoneStatusInterval = null;
+// Variabili globali aggiuntive
+window.programsData = {}; // Cache dei dati programmi
+window.lastKnownState = null; // Ultimo stato conosciuto
 
-// Inizializza la pagina manuale
+// Modifica alla funzione initializeManualPage
 function initializeManualPage(userData) {
     console.log("Inizializzazione pagina controllo manuale");
     
@@ -35,12 +36,42 @@ function initializeManualPage(userData) {
                 showToast('Errore nel caricamento delle impostazioni', 'error');
             });
     }
-    
+   
+       // Carica i dati dei programmi per riferimento alla durata delle zone
+    loadProgramsData();
+	
     // Avvia il polling per l'aggiornamento dello stato delle zone
     startZoneStatusPolling();
     
     // Pulisci quando si cambia pagina (window.onbeforeunload non funziona bene su ESP32)
     window.addEventListener('pagehide', cleanupManualPage);
+}
+
+// Nuova funzione per caricare i dati dei programmi
+function loadProgramsData() {
+    fetch('/data/program.json')
+        .then(response => {
+            if (!response.ok) throw new Error('Errore nel caricamento dei programmi');
+            return response.json();
+        })
+        .then(programs => {
+            window.programsData = programs || {};
+            console.log("Dati programmi caricati per riferimento durata zone");
+            
+            // Dopo aver caricato i programmi, ottieni lo stato corrente
+            return fetch('/get_program_state');
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Errore nel caricamento dello stato del programma');
+            return response.json();
+        })
+        .then(state => {
+            window.lastKnownState = state;
+            console.log("Stato programma caricato:", state);
+        })
+        .catch(error => {
+            console.error('Errore nel caricamento dei dati di riferimento:', error);
+        });
 }
 
 // Funzione per avviare il polling dello stato delle zone
@@ -135,7 +166,7 @@ function renderZones(zones) {
     fetchZonesStatus();
 }
 
-// Funzione migliorata per recuperare lo stato delle zone
+// Modifica alla funzione fetchZonesStatus per aggiornare anche lo stato del programma
 function fetchZonesStatus() {
     fetch('/get_zones_status')
         .then(response => {
@@ -149,6 +180,16 @@ function fetchZonesStatus() {
             } else {
                 console.error("Formato di risposta non valido per lo stato delle zone");
             }
+            
+            // Aggiorna anche lo stato del programma
+            return fetch('/get_program_state');
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Errore nel caricamento dello stato del programma');
+            return response.json();
+        })
+        .then(state => {
+            window.lastKnownState = state;
         })
         .catch(error => {
             console.error('Errore nel recupero dello stato delle zone:', error);
@@ -156,13 +197,15 @@ function fetchZonesStatus() {
         });
 }
 
-// Aggiorna l'interfaccia in base allo stato delle zone
+// Nel file web/manual.js
+// Modifica alla funzione updateZonesUI - sezione che gestisce la barra di progresso
+
 function updateZonesUI(zonesStatus) {
     if (!Array.isArray(zonesStatus)) return;
     
     zonesStatus.forEach(zone => {
         if (!zone || zone.id === undefined) return;
-        
+                
         const toggle = document.getElementById(`toggle-${zone.id}`);
         const zoneCard = document.getElementById(`zone-${zone.id}`);
         
@@ -199,23 +242,42 @@ function updateZonesUI(zonesStatus) {
             if (progressBar && timerDisplay) {
                 // Se non c'è già un intervallo in corso per questa zona, creane uno
                 if (!progressIntervals[zone.id]) {
-                    // Trova la durata impostata nel campo input
-                    const durationInput = document.getElementById(`duration-${zone.id}`);
-                    // Durata in secondi
-                    let duration = 0;
+                    // CORREZIONE: Usa sempre il tempo rimanente dal server per calcolare la durata totale
+                    // anziché usare il valore dal campo input
                     
-                    if (durationInput) {
-                        duration = parseInt(durationInput.value) * 60;
-                    } else {
-                        // Usa il tempo rimanente dal server
-                        duration = zone.remaining_time;
+                    // Ottieni il tempo rimanente dal server
+                    const remainingTime = zone.remaining_time;
+                    
+                    // Cerca di ottenere la durata totale dalle informazioni della zona
+                    // Se il server non fornisce questa informazione, stimiamo in base al tempo rimanente
+                    let totalDuration = remainingTime;
+                    
+                    // Cerca info dal programma attivo per una stima migliore della durata totale
+                    if (window.programsData && window.lastKnownState && 
+                        window.lastKnownState.program_running && 
+                        window.lastKnownState.current_program_id) {
+                        
+                        const programId = window.lastKnownState.current_program_id;
+                        const program = window.programsData[programId];
+                        
+                        if (program && program.steps) {
+                            // Cerca lo step corrispondente a questa zona
+                            const step = program.steps.find(s => s.zone_id === zone.id);
+                            if (step && step.duration) {
+                                // Durata totale in secondi
+                                totalDuration = step.duration * 60;
+                            }
+                        }
                     }
                     
-                    if (duration > 0) {
-                        const remainingTime = zone.remaining_time;
-                        const elapsedTime = duration - remainingTime;
-                        updateProgressBar(zone.id, elapsedTime, duration, remainingTime);
-                    }
+                    // Assicuriamoci che la durata totale sia almeno pari al tempo rimanente
+                    totalDuration = Math.max(totalDuration, remainingTime);
+                    
+                    // Calcola il tempo già trascorso
+                    const elapsedTime = totalDuration - remainingTime;
+                    
+                    // Aggiorna la barra di progresso
+                    updateProgressBar(zone.id, elapsedTime, totalDuration, remainingTime);
                 }
             }
         } else {

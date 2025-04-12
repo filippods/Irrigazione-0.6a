@@ -362,10 +362,9 @@ function renderProgramCards(programs, state) {
     }
 }
 
-/**
- * Aggiorna l'interfaccia in base allo stato del programma
- * @param {Object} state - Stato del programma
- */
+// Nel file web/view_programs.js
+// Modifica alla funzione updateProgramsUI
+
 function updateProgramsUI(state) {
     const currentProgramId = state.current_program_id;
     const programRunning = state.program_running;
@@ -373,7 +372,8 @@ function updateProgramsUI(state) {
     // Aggiorna tutte le card dei programmi
     document.querySelectorAll('.program-card').forEach(card => {
         const cardProgramId = card.getAttribute('data-program-id');
-        const isActive = programRunning && cardProgramId === currentProgramId;
+        // Assicuriamo il confronto tra stringhe per evitare problemi di tipo
+        const isActive = programRunning && String(cardProgramId) === String(currentProgramId);
         
         // Aggiorna classe attiva
         if (isActive) {
@@ -414,9 +414,8 @@ function updateProgramsUI(state) {
                 // Un altro programma è attivo
                 startBtn.classList.add('disabled');
                 startBtn.disabled = true;
-                // Consentire di fermare qualsiasi programma con qualsiasi pulsante OFF
-                stopBtn.classList.remove('disabled');
-                stopBtn.disabled = false;
+                stopBtn.classList.add('disabled');
+                stopBtn.disabled = true;
             } else {
                 // Nessun programma è attivo
                 startBtn.classList.remove('disabled');
