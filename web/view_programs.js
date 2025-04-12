@@ -336,9 +336,9 @@ function renderProgramCards(programs, state) {
                             ${isActive ? 'disabled' : ''}>
                         <span class="btn-icon">▶</span> ON
                     </button>
-                    <button class="btn btn-stop ${!isActive ? 'disabled' : ''}" 
+                    <button class="btn btn-stop ${!state.program_running ? 'disabled' : ''}" 
                             onclick="stopProgram()" 
-                            ${!isActive ? 'disabled' : ''}>
+                            ${!state.program_running ? 'disabled' : ''}>
                         <span class="btn-icon">■</span> OFF
                     </button>
                 </div>
@@ -362,9 +362,10 @@ function renderProgramCards(programs, state) {
     }
 }
 
-// Nel file web/view_programs.js
-// Modifica alla funzione updateProgramsUI
-
+/**
+ * Aggiorna l'interfaccia in base allo stato del programma
+ * @param {Object} state - Stato del programma
+ */
 function updateProgramsUI(state) {
     const currentProgramId = state.current_program_id;
     const programRunning = state.program_running;
@@ -372,8 +373,7 @@ function updateProgramsUI(state) {
     // Aggiorna tutte le card dei programmi
     document.querySelectorAll('.program-card').forEach(card => {
         const cardProgramId = card.getAttribute('data-program-id');
-        // Assicuriamo il confronto tra stringhe per evitare problemi di tipo
-        const isActive = programRunning && String(cardProgramId) === String(currentProgramId);
+        const isActive = programRunning && cardProgramId === currentProgramId;
         
         // Aggiorna classe attiva
         if (isActive) {
@@ -404,18 +404,14 @@ function updateProgramsUI(state) {
         const stopBtn = card.querySelector('.btn-stop');
         
         if (startBtn && stopBtn) {
-            if (isActive) {
-                // Questo programma è attivo
+            if (programRunning) {
+                // Quando un programma è in esecuzione
                 startBtn.classList.add('disabled');
                 startBtn.disabled = true;
+                
+                // CORREZIONE: Abilita sempre il pulsante OFF quando c'è un programma in esecuzione
                 stopBtn.classList.remove('disabled');
                 stopBtn.disabled = false;
-            } else if (programRunning) {
-                // Un altro programma è attivo
-                startBtn.classList.add('disabled');
-                startBtn.disabled = true;
-                stopBtn.classList.add('disabled');
-                stopBtn.disabled = true;
             } else {
                 // Nessun programma è attivo
                 startBtn.classList.remove('disabled');
@@ -446,7 +442,6 @@ function updateRunningProgramStatus(state) {
             // Crea la sezione se non esiste già
             statusSection = document.createElement('div');
             statusSection.className = 'running-status-section';
-            statusSection.style.cssText = 'background-color: #e6fff5; padding: 10px; margin-top: 10px; border-radius: 8px; border: 1px solid #b3e6cc;';
             
             // Inseriscila prima delle azioni
             const programActions = activeCard.querySelector('.program-actions');
