@@ -6,7 +6,19 @@
 if (typeof window.programStatusInterval === 'undefined') {
     window.programStatusInterval = null;      // Intervallo per il polling dello stato
 }
-let programsData = {};                 // Cache dei dati dei programmi
+if (typeof window.programsData === 'undefined') {
+    window.programsData = {};      // Cache dei dati dei programmi
+}
+// Correzione in view_programs.js - dichiarazione variabile programsData
+// Prima:
+// let programsData = {};                 // Cache dei dati dei programmi
+
+// Dopo:
+if (typeof window.programsData === 'undefined') {
+    window.programsData = {};
+}
+let programsData = window.programsData;  // Riferimento alla cache globale
+
 let zoneNameMap = {};                  // Mappatura ID zona -> nome zona
 let lastKnownState = null;             // Ultimo stato conosciuto (per confronti)
 let pollingAccelerated = false;        // Flag per indicare se il polling è accelerato
@@ -199,6 +211,7 @@ function loadUserSettingsAndPrograms() {
         
         // Salva i programmi per riferimento futuro
         programsData = programs || {};
+        window.programsData = programsData;
         
         // Ora che abbiamo tutti i dati necessari, possiamo renderizzare i programmi
         renderProgramCards(programsData, state);
@@ -272,6 +285,23 @@ function renderProgramCards(programs, state) {
         // Get the automatic status (default to true for backward compatibility)
         const isAutomatic = program.automatic_enabled !== false;
         
+        // Prepara i pulsanti con stati corretti
+        const startButtonHtml = isActive 
+            ? `<button class="btn btn-start disabled" onclick="startProgram('${programId}')" disabled>
+                <span class="btn-icon">▶</span> ON
+               </button>`
+            : `<button class="btn btn-start" onclick="startProgram('${programId}')">
+                <span class="btn-icon">▶</span> ON
+               </button>`;
+               
+        const stopButtonHtml = isActive 
+            ? `<button class="btn btn-stop" onclick="stopProgram()">
+                <span class="btn-icon">■</span> OFF
+               </button>`
+            : `<button class="btn btn-stop disabled" onclick="stopProgram()" disabled>
+                <span class="btn-icon">■</span> OFF
+               </button>`;
+        
         // Card del programma
         const programCard = document.createElement('div');
         programCard.className = `program-card ${isActive ? 'active-program' : ''}`;
@@ -331,16 +361,8 @@ function renderProgramCards(programs, state) {
             </div>
             <div class="program-actions">
                 <div class="action-row">
-                    <button class="btn btn-start ${isActive ? 'disabled' : ''}" 
-                            onclick="startProgram('${programId}')" 
-                            ${isActive ? 'disabled' : ''}>
-                        <span class="btn-icon">▶</span> ON
-                    </button>
-                    <button class="btn btn-stop ${!state.program_running ? 'disabled' : ''}" 
-                            onclick="stopProgram()" 
-                            ${!state.program_running ? 'disabled' : ''}>
-                        <span class="btn-icon">■</span> OFF
-                    </button>
+                    ${startButtonHtml}
+                    ${stopButtonHtml}
                 </div>
                 <div class="action-row">
                     <button class="btn btn-edit" onclick="editProgram('${programId}')">
@@ -362,10 +384,7 @@ function renderProgramCards(programs, state) {
     }
 }
 
-/**
- * Aggiorna l'interfaccia in base allo stato del programma
- * @param {Object} state - Stato del programma
- */
+// Modifica in view_programs.js - funzione updateProgramsUI
 function updateProgramsUI(state) {
     const currentProgramId = state.current_program_id;
     const programRunning = state.program_running;
@@ -373,7 +392,8 @@ function updateProgramsUI(state) {
     // Aggiorna tutte le card dei programmi
     document.querySelectorAll('.program-card').forEach(card => {
         const cardProgramId = card.getAttribute('data-program-id');
-        const isActive = programRunning && cardProgramId === currentProgramId;
+        // Assicuriamo il confronto tra stringhe per evitare problemi di tipo
+        const isActive = programRunning && String(cardProgramId) === String(currentProgramId);
         
         // Aggiorna classe attiva
         if (isActive) {
@@ -404,20 +424,30 @@ function updateProgramsUI(state) {
         const stopBtn = card.querySelector('.btn-stop');
         
         if (startBtn && stopBtn) {
-            if (programRunning) {
-                // Quando un programma è in esecuzione
+            if (isActive) {
+                // Questo programma è attivo
                 startBtn.classList.add('disabled');
                 startBtn.disabled = true;
-                
-                // CORREZIONE: Abilita sempre il pulsante OFF quando c'è un programma in esecuzione
                 stopBtn.classList.remove('disabled');
                 stopBtn.disabled = false;
+                
+                // Assicurati che il pulsante stop sia realmente cliccabile
+                stopBtn.style.pointerEvents = 'auto';
+                stopBtn.setAttribute('onclick', "stopProgram()");
+            } else if (programRunning) {
+                // Un altro programma è attivo
+                startBtn.classList.add('disabled');
+                startBtn.disabled = true;
+                stopBtn.classList.add('disabled');
+                stopBtn.disabled = true;
+                stopBtn.style.pointerEvents = 'none';
             } else {
                 // Nessun programma è attivo
                 startBtn.classList.remove('disabled');
                 startBtn.disabled = false;
                 stopBtn.classList.add('disabled');
                 stopBtn.disabled = true;
+                stopBtn.style.pointerEvents = 'none';
             }
         }
     });
@@ -442,6 +472,7 @@ function updateRunningProgramStatus(state) {
             // Crea la sezione se non esiste già
             statusSection = document.createElement('div');
             statusSection.className = 'running-status-section';
+            statusSection.style.cssText = 'background-color: #e6fff5; padding: 10px; margin-top: 10px; border-radius: 8px; border: 1px solid #b3e6cc;';
             
             // Inseriscila prima delle azioni
             const programActions = activeCard.querySelector('.program-actions');

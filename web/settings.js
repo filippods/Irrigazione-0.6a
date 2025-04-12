@@ -534,14 +534,15 @@ function saveAdvancedSettings() {
         return;
     }
     
-    if (isNaN(activationDelay) || activationDelay < 0) {
-        showToast('Il ritardo di attivazione deve essere un numero positivo', 'error');
-        if (saveButton) {
-            saveButton.classList.remove('loading');
-            saveButton.disabled = false;
-        }
-        return;
-    }
+	// Modifica in settings.js - funzione saveAdvancedSettings
+	if (isNaN(activationDelay) || activationDelay < 0 || activationDelay > 60) {
+		showToast('L\'anticipo o ritardo zona deve essere tra 0 e 60 secondi', 'error');
+		if (saveButton) {
+			saveButton.classList.remove('loading');
+			saveButton.disabled = false;
+		}
+		return;
+	}
     
     if (isNaN(maxZoneDuration) || maxZoneDuration < 1) {
         showToast('La durata massima deve essere almeno 1 minuto', 'error');

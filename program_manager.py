@@ -422,15 +422,14 @@ async def execute_program(program, manual=False):
 
     # Se è un programma automatico, prima arresta tutte le zone manuali
     # I programmi automatici hanno priorità
-    if not manual:
-        active_count = get_active_zones_count()
-        if active_count > 0:
-            log_event("Arresto zone attive per dare priorità al programma automatico", "INFO")
-            try:
-                stop_all_zones()
-                await asyncio.sleep(1)  # Piccolo ritardo per sicurezza
-            except Exception as e:
-                log_event(f"Errore durante l'arresto delle zone attive: {e}", "ERROR")
+    active_count = get_active_zones_count()
+    if active_count > 0:
+        log_event(f"Arresto zone attive per dare priorità al programma {'manuale' if manual else 'automatico'}", "INFO")
+        try:
+            stop_all_zones()
+            await asyncio.sleep(1)  # Piccolo ritardo per sicurezza
+        except Exception as e:
+            log_event(f"Errore durante l'arresto delle zone attive: {e}", "ERROR")
 
     # Arresta tutte le zone prima di avviare un nuovo programma
     try:
@@ -551,12 +550,12 @@ async def execute_program(program, manual=False):
                 
             log_event(f"Zona {zone_id} completata", "INFO")
 
-            # FASE 3.4: Applica il ritardo di attivazione tra le zone
+            # Modifica in program_manager.py - rimuovere la conversione da minuti a secondi
             if activation_delay > 0 and i < len(steps) - 1:
-                log_event(f"Attesa {activation_delay} minuti prima della prossima zona", "INFO")
+                log_event(f"Attesa {activation_delay} secondi prima della prossima zona", "INFO")
                 
                 # Suddividi anche il ritardo in intervalli più brevi
-                delay_seconds = activation_delay * 60
+                delay_seconds = activation_delay  # Già in secondi, non moltiplicare per 60
                 while delay_seconds > 0 and program_running:
                     wait_time = min(check_interval, delay_seconds)
                     await asyncio.sleep(wait_time)
@@ -577,7 +576,7 @@ async def execute_program(program, manual=False):
             log_event(f"Programma {program_name} completato con successo", "INFO")
         
         return successful_execution
-        
+    
     except Exception as e:
         log_event(f"Errore durante l'esecuzione del programma {program_name}: {e}", "ERROR")
         return False
@@ -773,8 +772,13 @@ async def check_programs():
                 # Verifica se c'è già un programma in esecuzione
                 load_program_state()  # Assicurati di avere lo stato aggiornato
                 if program_running:
-                    log_event("Impossibile avviare: altro programma già in esecuzione", "WARNING")
-                    continue
+                    log_event("Programma in esecuzione, verrà interrotto per avviare il nuovo programma automatico", "WARNING")
+                    # Interrompi il programma in corso prima di avviare il nuovo
+                    stop_program()  # Questa funzione ferma il programma attivo e tutte le zone
+                    # Breve pausa per assicurarsi che tutto sia fermato
+                    await asyncio.sleep(2)
+                    # Ricarica lo stato per assicurarsi che sia aggiornato
+                    load_program_state()
                     
                 # Avvia il programma con gestione degli errori
                 try:
