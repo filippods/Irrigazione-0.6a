@@ -793,7 +793,7 @@ async def check_programs():
                 elif activation_minute == 0 and current_minute == 59 and current_hour == activation_hour - 1:
                     time_match = True
                 # Cambio ora (es: 09:59 vs 10:00)
-                elif activation_minute == 59 and current_minute == 0 and current_hour == activation_hour + 1:
+                elif current_minute == 0 and activation_minute == 59 and current_hour == activation_hour + 1:
                     time_match = True
                 
                 # Verifica se il programma deve essere eseguito
