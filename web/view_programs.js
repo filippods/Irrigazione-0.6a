@@ -6,19 +6,15 @@
 if (typeof window.programStatusInterval === 'undefined') {
     window.programStatusInterval = null;      // Intervallo per il polling dello stato
 }
+// Replace lines 9-18 in view_programs.js with this:
+if (typeof window.programStatusInterval === 'undefined') {
+    window.programStatusInterval = null;      // Intervallo per il polling dello stato
+}
 if (typeof window.programsData === 'undefined') {
     window.programsData = {};      // Cache dei dati dei programmi
 }
-// Correzione in view_programs.js - dichiarazione variabile programsData
-// Prima:
-// let programsData = {};                 // Cache dei dati dei programmi
 
-// Dopo:
-if (typeof window.programsData === 'undefined') {
-    window.programsData = {};
-}
-const programsData = window.programsData;  // Usa const invece di let
-
+// Usa direttamente window.programsData in tutto il file
 let zoneNameMap = {};                  // Mappatura ID zona -> nome zona
 let lastKnownState = null;             // Ultimo stato conosciuto (per confronti)
 let pollingAccelerated = false;        // Flag per indicare se il polling è accelerato
@@ -235,7 +231,7 @@ function loadUserSettingsAndPrograms() {
         
         // Salva i programmi per riferimento futuro
 // Salva i programmi per riferimento futuro
-			Object.assign(programsData, programs || {});
+			Object.assign(window.programsData, programs || {});
 			window.programsData = programsData;
         
         // Ora che abbiamo tutti i dati necessari, possiamo renderizzare i programmi
@@ -409,7 +405,7 @@ function renderProgramCards(programs, state) {
     }
 }
 
-// Modifica in view_programs.js - funzione updateProgramsUI
+// Replace the updateProgramsUI function in view_programs.js
 function updateProgramsUI(state) {
     const currentProgramId = state.current_program_id;
     const programRunning = state.program_running;
@@ -482,6 +478,7 @@ function updateProgramsUI(state) {
  * Aggiorna le informazioni dettagliate sul programma in esecuzione
  * @param {Object} state - Stato del programma
  */
+// Update or add this function in view_programs.js
 function updateRunningProgramStatus(state) {
     // Ottieni il div per il programma attivo, se esiste
     const activeCard = document.querySelector(`.program-card[data-program-id="${state.current_program_id}"]`);
@@ -497,7 +494,6 @@ function updateRunningProgramStatus(state) {
             // Crea la sezione se non esiste già
             statusSection = document.createElement('div');
             statusSection.className = 'running-status-section';
-            statusSection.style.cssText = 'background-color: #e6fff5; padding: 10px; margin-top: 10px; border-radius: 8px; border: 1px solid #b3e6cc;';
             
             // Inseriscila prima delle azioni
             const programActions = activeCard.querySelector('.program-actions');
@@ -512,15 +508,14 @@ function updateRunningProgramStatus(state) {
         const seconds = remainingSeconds % 60;
         const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         
-        // Determina l'avanzamento della zona attiva - FIX: calcolo corretto percentuale
+        // Determina l'avanzamento della zona attiva - calcolo corretto percentuale
         let progressPercentage = 0;
-        const steps = programsData[state.current_program_id]?.steps || [];
+        const steps = window.programsData[state.current_program_id]?.steps || [];
         const currentStep = steps.find(step => step.zone_id === state.active_zone.id);
         
         if (currentStep) {
             const totalSeconds = currentStep.duration * 60;
             const elapsedSeconds = totalSeconds - remainingSeconds;
-            // FIX: Calcolo corretto della percentuale di avanzamento
             progressPercentage = Math.min(Math.max((elapsedSeconds / totalSeconds) * 100, 0), 100);
         } else {
             // Fallback, dovrebbe sempre trovare lo step corrispondente
@@ -538,10 +533,8 @@ function updateRunningProgramStatus(state) {
                 <span>Tempo Rimanente:</span>
                 <span>${formattedTime}</span>
             </div>
-            <div style="height: 10px; background-color: #f0f0f0; border-radius: 5px; overflow: hidden; margin-top: 8px;">
-                <div style="height: 100%; width: ${progressPercentage}%; 
-                            background: linear-gradient(90deg, #0099ff, #00cc66); 
-                            border-radius: 5px;"></div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: ${progressPercentage}%;"></div>
             </div>
         `;
     }
