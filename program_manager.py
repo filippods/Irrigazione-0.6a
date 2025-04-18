@@ -746,19 +746,52 @@ async def check_programs():
             return
         
         # Ottieni l'ora corrente nel formato HH:MM
+        # Sostituisci il confronto del tempo nella funzione check_programs() in program_manager.py
+        # Cerca la sezione dopo "current_time_str = f"{t[3]:02d}:{t[4]:02d}"" e sostituiscila con:
+
+        # Ottieni l'ora corrente
         t = time.localtime()
         current_time_str = f"{t[3]:02d}:{t[4]:02d}"
+
+        # Parse del tempo target
+        try:
+            activation_parts = activation_time.split(':')
+            if len(activation_parts) == 2:
+                activation_hour = int(activation_parts[0])
+                activation_minute = int(activation_parts[1])
+        
+                current_hour = t[3]
+                current_minute = t[4]
+        
+                # Verifica se siamo entro 1 minuto dall'orario di attivazione
+                # Questo rende il sistema più robusto contro piccoli ritardi di scheduling
+                time_match = (
+                    (current_hour == activation_hour and current_minute == activation_minute) or
+                    (current_hour == activation_hour and current_minute == activation_minute - 1) or
+                    (current_hour == activation_hour and current_minute == activation_minute + 1)
+                )
+        
+                # Gestione cambio di ora (es. 9:00 vs 8:59)
+                if activation_minute == 0 and current_minute == 59 and current_hour == activation_hour - 1:
+                    time_match = True
+                # Gestione cambio di ora (es. 9:00 vs 9:01)
+                elif activation_minute == 59 and current_minute == 0 and current_hour == activation_hour + 1:
+                    time_match = True
+            
+                if (time_match and
+                    is_program_active_in_current_month(program) and
+                    is_program_due_today(program)):
 
         # Verifica ogni programma
         for program_id, program in programs.items():
             # Skip programmi non validi
             if not isinstance(program, dict):
-                continue
+            continue
                 
             # Verifica se questo programma specifico ha l'automazione abilitata
             # Default a True per compatibilità con versioni precedenti
             if program.get('automatic_enabled', True) is not True:
-                continue
+            continue
                 
             activation_time = program.get('activation_time', '')
             if not activation_time:
