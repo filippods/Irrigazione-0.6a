@@ -553,6 +553,7 @@ async def execute_program(program, manual=False):
             # Modifica in program_manager.py - rimuovere la conversione da minuti a secondi
             # In program_manager.py, the execute_program function, find this section and update it:
             # MODIFIED CODE - CORRECT HANDLING OF ACTIVATION DELAY
+            # Gestione del ritardo tra zone
             if activation_delay > 0 and i < len(steps) - 1:
                 log_event(f"Attesa {activation_delay} secondi prima della prossima zona", "INFO")
 
@@ -746,81 +747,83 @@ async def check_programs():
             return
         
         # Ottieni l'ora corrente nel formato HH:MM
-        # Sostituisci il confronto del tempo nella funzione check_programs() in program_manager.py
-        # Cerca la sezione dopo "current_time_str = f"{t[3]:02d}:{t[4]:02d}"" e sostituiscila con:
-
-        # Ottieni l'ora corrente
         t = time.localtime()
         current_time_str = f"{t[3]:02d}:{t[4]:02d}"
-
-        # Parse del tempo target
-        try:
-            activation_parts = activation_time.split(':')
-            if len(activation_parts) == 2:
-                activation_hour = int(activation_parts[0])
-                activation_minute = int(activation_parts[1])
-        
-                current_hour = t[3]
-                current_minute = t[4]
-        
-                # Verifica se siamo entro 1 minuto dall'orario di attivazione
-                # Questo rende il sistema più robusto contro piccoli ritardi di scheduling
-                time_match = (
-                    (current_hour == activation_hour and current_minute == activation_minute) or
-                    (current_hour == activation_hour and current_minute == activation_minute - 1) or
-                    (current_hour == activation_hour and current_minute == activation_minute + 1)
-                )
-        
-                # Gestione cambio di ora (es. 9:00 vs 8:59)
-                if activation_minute == 0 and current_minute == 59 and current_hour == activation_hour - 1:
-                    time_match = True
-                # Gestione cambio di ora (es. 9:00 vs 9:01)
-                elif activation_minute == 59 and current_minute == 0 and current_hour == activation_hour + 1:
-                    time_match = True
-            
-                if (time_match and
-                    is_program_active_in_current_month(program) and
-                    is_program_due_today(program)):
+        current_hour = t[3]
+        current_minute = t[4]
 
         # Verifica ogni programma
         for program_id, program in programs.items():
             # Skip programmi non validi
             if not isinstance(program, dict):
-            continue
+                continue
                 
             # Verifica se questo programma specifico ha l'automazione abilitata
             # Default a True per compatibilità con versioni precedenti
             if program.get('automatic_enabled', True) is not True:
-            continue
+                continue
                 
             activation_time = program.get('activation_time', '')
             if not activation_time:
                 continue
             
-            # Verifica se il programma deve essere eseguito
-            if (current_time_str == activation_time and
-                is_program_active_in_current_month(program) and
-                is_program_due_today(program)):
+            # Parse del tempo di attivazione
+            activation_parts = activation_time.split(':')
+            if len(activation_parts) != 2:
+                continue
                 
-                log_event(f"Avvio programma pianificato: {program.get('name', 'Senza nome')}", "INFO")
+            try:
+                activation_hour = int(activation_parts[0])
+                activation_minute = int(activation_parts[1])
                 
-                # Verifica se c'è già un programma in esecuzione
-                load_program_state()  # Assicurati di avere lo stato aggiornato
-                if program_running:
-                    log_event("Programma in esecuzione, verrà interrotto per avviare il nuovo programma automatico", "WARNING")
-                    # Interrompi il programma in corso prima di avviare il nuovo
-                    stop_program()  # Questa funzione ferma il programma attivo e tutte le zone
-                    # Breve pausa per assicurarsi che tutto sia fermato
-                    await asyncio.sleep(2)
-                    # Ricarica lo stato per assicurarsi che sia aggiornato
-                    load_program_state()
+                # Verifica se il tempo corrente è vicino al tempo di attivazione
+                # Include il minuto prima e dopo per rendere più robusto l'avvio
+                time_match = False
+                
+                # Corrispondenza esatta
+                if current_hour == activation_hour and current_minute == activation_minute:
+                    time_match = True
+                # Minuto prima
+                elif current_hour == activation_hour and current_minute == activation_minute - 1:
+                    time_match = True
+                # Minuto dopo
+                elif current_hour == activation_hour and current_minute == activation_minute + 1:
+                    time_match = True
+                # Cambio ora (es: 08:59 vs 09:00)
+                elif activation_minute == 0 and current_minute == 59 and current_hour == activation_hour - 1:
+                    time_match = True
+                # Cambio ora (es: 09:59 vs 10:00)
+                elif activation_minute == 59 and current_minute == 0 and current_hour == activation_hour + 1:
+                    time_match = True
+                
+                # Verifica se il programma deve essere eseguito
+                if (time_match and
+                    is_program_active_in_current_month(program) and
+                    is_program_due_today(program)):
                     
-                # Avvia il programma con gestione degli errori
-                try:
-                    success = await execute_program(program)
-                    if not success:
-                        log_event(f"Errore esecuzione programma {program_id}", "ERROR")
-                except Exception as e:
-                    log_event(f"Eccezione durante esecuzione programma {program_id}: {e}", "ERROR")
+                    log_event(f"Avvio programma pianificato: {program.get('name', 'Senza nome')}", "INFO")
+                    
+                    # Verifica se c'è già un programma in esecuzione
+                    load_program_state()  # Assicurati di avere lo stato aggiornato
+                    if program_running:
+                        log_event("Programma in esecuzione, verrà interrotto per avviare il nuovo programma automatico", "WARNING")
+                        # Interrompi il programma in corso prima di avviare il nuovo
+                        stop_program()  # Questa funzione ferma il programma attivo e tutte le zone
+                        # Breve pausa per assicurarsi che tutto sia fermato
+                        await asyncio.sleep(2)
+                        # Ricarica lo stato per assicurarsi che sia aggiornato
+                        load_program_state()
+                        
+                    # Avvia il programma con gestione degli errori
+                    try:
+                        success = await execute_program(program)
+                        if not success:
+                            log_event(f"Errore esecuzione programma {program_id}", "ERROR")
+                    except Exception as e:
+                        log_event(f"Eccezione durante esecuzione programma {program_id}: {e}", "ERROR")
+            except ValueError:
+                # Errore nel parsing dei tempi, salta questo programma
+                log_event(f"Formato tempo non valido nel programma {program_id}: {activation_time}", "WARNING")
+                continue
     except Exception as e:
         log_event(f"Errore critico in check_programs: {e}", "ERROR")
