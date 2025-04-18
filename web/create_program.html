@@ -248,7 +248,21 @@
             from { transform: rotate(0turn); }
             to { transform: rotate(1turn); }
         }
-        
+		@media (max-width: 600px) {
+			.months-grid {
+				grid-template-columns: repeat(3, 1fr);
+				gap: 8px;
+				}
+    
+			/* mantieni le altre regole esistenti */
+		}
+
+		@media (max-width: 400px) {
+			.months-grid {
+				grid-template-columns: repeat(2, 1fr);
+				gap: 6px;
+			}
+		}
         /* Responsività per mobile */
         @media (max-width: 600px) {
             .months-grid {

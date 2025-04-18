@@ -234,8 +234,9 @@ function loadUserSettingsAndPrograms() {
         }
         
         // Salva i programmi per riferimento futuro
-        programsData = programs || {};
-        window.programsData = programsData;
+// Salva i programmi per riferimento futuro
+			Object.assign(programsData, programs || {});
+			window.programsData = programsData;
         
         // Ora che abbiamo tutti i dati necessari, possiamo renderizzare i programmi
         renderProgramCards(programsData, state);

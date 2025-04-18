@@ -139,23 +139,23 @@ function renderZones(zones) {
         // Per impostare correttamente il valore di default e il massimo dell'input durata
         const defaultDuration = Math.min(10, maxZoneDuration);
         
-        zoneCard.innerHTML = `
-            <h3>${zone.name || `Zona ${zone.id + 1}`}</h3>
-            <div class="input-container">
-                <input type="number" id="duration-${zone.id}" placeholder="Durata (minuti)" 
-                       min="1" max="${maxZoneDuration}" value="${defaultDuration}">
-                <div class="toggle-switch">
-                    <label class="switch">
-                        <input type="checkbox" id="toggle-${zone.id}" class="zone-toggle" data-zone-id="${zone.id}">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-            <div class="progress-container">
-                <progress id="progress-${zone.id}" value="0" max="100"></progress>
-                <div class="timer-display" id="timer-${zone.id}">00:00</div>
-            </div>
-        `;
+		zoneCard.innerHTML = `
+			<h3>${zone.name || `Zona ${zone.id + 1}`}</h3>
+			<div class="input-container">
+				<input type="number" id="duration-${zone.id}" placeholder="Durata (minuti)" 
+					min="1" max="${maxZoneDuration}">
+				<div class="toggle-switch">
+					<label class="switch">
+						<input type="checkbox" id="toggle-${zone.id}" class="zone-toggle" data-zone-id="${zone.id}">
+						<span class="slider"></span>
+					</label>
+				</div>
+			</div>
+			<div class="progress-container">
+				<progress id="progress-${zone.id}" value="0" max="100"></progress>
+				<div class="timer-display" id="timer-${zone.id}">00:00</div>
+			</div>
+		`;
         container.appendChild(zoneCard);
     });
     

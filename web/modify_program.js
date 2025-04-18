@@ -126,8 +126,8 @@ function generateZonesGrid(zones) {
             </div>
             <div>
                 <input type="number" class="zone-duration" id="duration-${zone.id}" 
-                       min="1" max="180" value="10" placeholder="Durata (minuti)" 
-                       data-zone-id="${zone.id}" disabled>
+					min="1" max="180" placeholder="Durata (minuti)" 
+					data-zone-id="${zone.id}" disabled>
             </div>
         `;
         
