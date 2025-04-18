@@ -250,31 +250,43 @@ function updateZonesUI(zonesStatus) {
                     
                     // Cerca di ottenere la durata totale dalle informazioni della zona
                     // Se il server non fornisce questa informazione, stimiamo in base al tempo rimanente
-                    let totalDuration = remainingTime;
-                    
-                    // Cerca info dal programma attivo per una stima migliore della durata totale
-                    if (window.programsData && window.lastKnownState && 
-                        window.lastKnownState.program_running && 
-                        window.lastKnownState.current_program_id) {
-                        
-                        const programId = window.lastKnownState.current_program_id;
-                        const program = window.programsData[programId];
-                        
-                        if (program && program.steps) {
-                            // Cerca lo step corrispondente a questa zona
-                            const step = program.steps.find(s => s.zone_id === zone.id);
-                            if (step && step.duration) {
-                                // Durata totale in secondi
-                                totalDuration = step.duration * 60;
-                            }
-                        }
-                    }
-                    
-                    // Assicuriamoci che la durata totale sia almeno pari al tempo rimanente
-                    totalDuration = Math.max(totalDuration, remainingTime);
-                    
-                    // Calcola il tempo già trascorso
-                    const elapsedTime = totalDuration - remainingTime;
+					// Cerca di ottenere la durata totale dalle informazioni della zona
+					// Se il server non fornisce questa informazione, stimiamo in base al tempo rimanente
+					let totalDuration = remainingTime;
+					let elapsedTime = 0;
+
+					// Cerca info dal programma attivo per una stima migliore della durata totale
+					if (window.programsData && window.lastKnownState && 
+						window.lastKnownState.program_running && 
+						window.lastKnownState.current_program_id) {
+    
+						const programId = window.lastKnownState.current_program_id;
+						const program = window.programsData[programId];
+    
+						if (program && program.steps) {
+							// Cerca lo step corrispondente a questa zona
+							const currentStep = program.steps.find(s => s.zone_id === zone.id);
+							if (currentStep && currentStep.duration) {
+								// Durata totale in secondi
+								totalDuration = currentStep.duration * 60;
+								// Calcola il tempo trascorso con sicurezza
+								elapsedTime = Math.max(0, totalDuration - remainingTime);
+							} else {
+								// Fallback se non troviamo lo step
+								totalDuration = Math.max(600, remainingTime); // Assume 10 minuti default
+								elapsedTime = totalDuration - remainingTime;
+							}
+						} else {
+							// Calcolo generico
+							elapsedTime = totalDuration - remainingTime;
+						}
+					} else {
+						// Calcolo generico quando non c'è un programma attivo
+						elapsedTime = totalDuration - remainingTime;
+					}
+
+					// Assicuriamoci che la durata totale sia almeno pari al tempo rimanente
+					totalDuration = Math.max(totalDuration, remainingTime);
                     
                     // Aggiorna la barra di progresso
                     updateProgressBar(zone.id, elapsedTime, totalDuration, remainingTime);

@@ -32,6 +32,59 @@ consecutive_program_errors = 0
 last_error_reset_time = 0
 system_start_time = time.time()
 
+async def basic_diagnostics_loop():
+    """
+    Versione semplificata del sistema di diagnostica che esegue
+    controlli base senza terminare.
+    """
+    log_event("Sistema diagnostica base avviato", "INFO")
+    
+    while True:
+        try:
+            # Controlli memoria
+            free_mem = gc.mem_free()
+            total_mem = free_mem + gc.mem_alloc()
+            percent_free = (free_mem / total_mem) * 100
+            
+            # Controlli rete
+            try:
+                import network
+                wlan_sta = network.WLAN(network.STA_IF)
+                wlan_ap = network.WLAN(network.AP_IF)
+                
+                if wlan_sta.isconnected():
+                    # Client connesso - tutto ok
+                    pass
+                elif wlan_ap.active():
+                    # AP attivo - tutto ok
+                    pass
+                else:
+                    # Nessuna connettività - log warning
+                    log_event("Nessuna connettività di rete attiva", "WARNING")
+            except:
+                pass
+            
+            # Controlli server web
+            try:
+                import socket
+                s = socket.socket()
+                s.settimeout(2)
+                s.connect(('127.0.0.1', 80))
+                s.send(b'GET / HTTP/1.0\r\n\r\n')
+                s.close()
+                # Server risponde - tutto ok
+            except:
+                log_event("Server web non risponde", "WARNING")
+            
+            # Attendi 30 secondi prima del prossimo controllo
+            await asyncio.sleep(30)
+        
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            log_event(f"Errore diagnostica: {e}", "ERROR")
+            await asyncio.sleep(60)  # Attendi più a lungo in caso di errore
+            
 async def program_check_loop():
     """
     Task asincrono che controlla periodicamente i programmi di irrigazione.
@@ -308,7 +361,7 @@ async def main():
         tasks.append(watchdog_task)
         
         # Avvia la versione semplificata della diagnostica
-        # MODIFICA: Usare basic_diagnostics_loop invece di start_diagnostics
+        # Avvia la versione semplificata della diagnostica
         log_event("Avvio sistema di diagnostica semplificato", "INFO")
         diagnostics_task = asyncio.create_task(basic_diagnostics_loop())
         tasks.append(diagnostics_task)

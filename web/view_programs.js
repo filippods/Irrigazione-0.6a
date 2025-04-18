@@ -17,7 +17,7 @@ if (typeof window.programsData === 'undefined') {
 if (typeof window.programsData === 'undefined') {
     window.programsData = {};
 }
-let programsData = window.programsData;  // Riferimento alla cache globale
+const programsData = window.programsData;  // Usa const invece di let
 
 let zoneNameMap = {};                  // Mappatura ID zona -> nome zona
 let lastKnownState = null;             // Ultimo stato conosciuto (per confronti)
@@ -66,11 +66,35 @@ function startProgramStatusPolling() {
     // Esegui subito
     fetchProgramState();
     
-    // Imposta l'intervallo per il polling
-    window.programStatusInterval = setInterval(fetchProgramState, NORMAL_POLLING_INTERVAL);
+    // Imposta l'intervallo per il polling e adatta in base allo stato
+    let pollingInterval = NORMAL_POLLING_INTERVAL;
+    
+    // Adatta l'intervallo di polling in base allo stato del programma
+    if (lastKnownState && lastKnownState.program_running) {
+        pollingInterval = FAST_POLLING_INTERVAL;
+    }
+    
+    window.programStatusInterval = setInterval(fetchProgramState, pollingInterval);
     console.log("Polling dello stato dei programmi avviato");
+    
+    // Aggiungi listener per visibilità pagina se necessario
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden && window.programStatusInterval) {
+            // Se la pagina non è visibile, polling più lento
+            clearInterval(window.programStatusInterval);
+            window.programStatusInterval = setInterval(fetchProgramState, NORMAL_POLLING_INTERVAL * 2);
+        } else if (!document.hidden && window.programStatusInterval) {
+            // Quando la pagina diventa visibile, ripristina polling normale
+            clearInterval(window.programStatusInterval);
+            
+            // Adatta l'intervallo in base allo stato
+            let newInterval = lastKnownState && lastKnownState.program_running ? 
+                FAST_POLLING_INTERVAL : NORMAL_POLLING_INTERVAL;
+                
+            window.programStatusInterval = setInterval(fetchProgramState, newInterval);
+        }
+    });
 }
-
 /**
  * Ferma il polling dello stato dei programmi
  */

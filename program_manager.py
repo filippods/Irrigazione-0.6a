@@ -553,17 +553,17 @@ async def execute_program(program, manual=False):
             # Modifica in program_manager.py - rimuovere la conversione da minuti a secondi
             if activation_delay > 0 and i < len(steps) - 1:
                 log_event(f"Attesa {activation_delay} secondi prima della prossima zona", "INFO")
-                
+    
                 # Suddividi anche il ritardo in intervalli più brevi
                 delay_seconds = activation_delay  # Già in secondi, non moltiplicare per 60
                 while delay_seconds > 0 and program_running:
                     wait_time = min(check_interval, delay_seconds)
                     await asyncio.sleep(wait_time)
                     delay_seconds -= wait_time
-                    
+        
                     # Verifica lo stato del programma
                     load_program_state()
-                    
+        
                     if not program_running:
                         break
         
